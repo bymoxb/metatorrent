@@ -13,12 +13,12 @@ export function useGetMetadata() {
 
         setLoading(true);
 
-        fetch("/api/metadata", {
+        fetch("/api/meta", {
             method: "post",
             body: JSON.stringify({ url })
         })
             .then(raw => raw.json())
-            .then((data) => setTorrent(data))
+            .then((data) => setTorrent(data.data))
             .finally(() => setLoading(false))
     };
 
