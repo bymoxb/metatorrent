@@ -2,18 +2,20 @@ package torrent
 
 import (
 	"github.com/anacrolix/torrent"
+	"github.com/bymoxb/metatorrent/internal/infra/config"
 )
 
-func NewAnacrolixClient() (*torrent.Client, error) {
-	cfg := torrent.NewDefaultClientConfig()
+func NewAnacrolixClient(cfg *config.Config) (*torrent.Client, error) {
 
-	cfg.DisableTrackers = true
-	cfg.NoUpload = true
+	anacrolixcfg := torrent.NewDefaultClientConfig()
+
+	anacrolixcfg.DisableTrackers = true
+	anacrolixcfg.NoUpload = true
 	// cfg.MetainfoSourcesClient = &http.Client{
 	// 	Timeout: time.Second * 10,
 	// }
 
 	// slog.Debug("Creating Torrent Client")
 
-	return torrent.NewClient(cfg)
+	return torrent.NewClient(anacrolixcfg)
 }

@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 
+	"github.com/bymoxb/metatorrent/internal/infra/http/dtos"
 	"github.com/bymoxb/metatorrent/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -38,6 +39,6 @@ func (self *MetaController) MetadataHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": result,
+		"data": dtos.MapMetadataToDTO(result),
 	})
 }
