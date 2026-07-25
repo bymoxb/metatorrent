@@ -32,6 +32,8 @@ func (c *Client) ExtractMetadata(url string) (*domain.Metadata, error) {
 		return nil, err
 	}
 
+	defer t.Drop()
+
 	slog.Debug("Getting file ", "name", t.Name())
 	// fmt.Printf("stats1: %+v\n", t.Stats())
 	<-t.GotInfo()
