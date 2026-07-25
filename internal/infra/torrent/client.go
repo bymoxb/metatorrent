@@ -48,6 +48,9 @@ func (c *Client) ExtractMetadata(url string) (*domain.Metadata, error) {
 	}
 
 	trackers := t.Metainfo().AnnounceList.Clone().DistinctValues()
+	if trackers == nil {
+		trackers = []string{}
+	}
 
 	metadata := &domain.Metadata{
 		Name:     info.Name,
