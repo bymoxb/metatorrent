@@ -25,8 +25,9 @@ The project combines a Go backend with a Preact frontend to deliver fast metadat
 
 ### Docker Deployment
 
+Run the container
+
 ```bash
-# Run the container with environment variables and a persistent volume:
 docker run -d \
   --name metatorrent \
   --restart unless-stopped \
