@@ -1,0 +1,14 @@
+services:
+  metatorrent:
+    build:
+      context: .
+      dockerfile: dockerfile
+    image: metatorrent:local
+    container_name: metatorrent-local
+    user: "1000:1000"
+    environment:
+      - SQLITE_PATH=/data/rating.db
+    volumes:
+      - ./config/metatorrent:/data
+    ports:
+      - 8080:8080
