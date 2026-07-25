@@ -2,7 +2,10 @@ import { useEffect, useState } from "preact/hooks";
 import type { Torrent } from "./type";
 import { getMagnetFromHash } from "./utils";
 
+const ERROR_MESSAGE = "Unable to fetch torrent metadata. Please verify the URL and try again.";
+
 export function useGetMetadata() {
+    const [error, setError] = useState<string | null>(null)
     const [url, setUrl] = useState(() => {
         const magnet = getMagnetFromHash();
         if (magnet) {
@@ -25,12 +28,21 @@ export function useGetMetadata() {
             method: "post",
             body: JSON.stringify({ url })
         })
-            .then(raw => raw.json())
-            .then((data) => setTorrent(data.data))
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error();
+                }
+                return response.json();
+            })
+            .then((data) => {
+                setTorrent(data.data);
+                setError(null);
+            })
+            .catch(() => setError(ERROR_MESSAGE))
             .finally(() => setLoading(false))
     };
 
-    return { url, setUrl, loading, torrent, onSubmit }
+    return { url, setUrl, loading, torrent, onSubmit, error }
 }
 
 export function useRegisterProtocolHandler() {
