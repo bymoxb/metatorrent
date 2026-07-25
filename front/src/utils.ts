@@ -128,3 +128,12 @@ export function formatBytes(bytes: number, decimals = 2): string {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
+
+export function getMagnetFromHash() {
+    const hash = window.location.hash;
+    if (hash.startsWith('#url=')) {
+        const encodedMagnet = hash.substring(5);
+        return decodeURIComponent(encodedMagnet);
+    }
+    return null;
+};
