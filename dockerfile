@@ -10,7 +10,7 @@ RUN corepack enable
 
 WORKDIR /app
 
-COPY metatorrent-front/ .
+COPY front/ .
 
 # ------------------------------------------------------------------------------
 # Frontend build
