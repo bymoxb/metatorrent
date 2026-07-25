@@ -1,10 +1,14 @@
 import { LinkIcon, Search, X, Loader2 } from "lucide-react";
+import type { TargetedSubmitEvent } from "preact";
 
-const SearchForm = ({
-    url, setUrl, onSubmit, loading
-}: {
-    url: string, setUrl: (val: string) => void, onSubmit: (e: React.FormEvent) => void, loading: boolean
-}) => (
+type SearchFormProps = {
+    url: string,
+    setUrl: (val: string) => void,
+    onSubmit: (e: TargetedSubmitEvent<HTMLFormElement>) => void,
+    loading: boolean,
+}
+
+const SearchForm = ({ url, setUrl, onSubmit, loading }: SearchFormProps) => (
     <section className="space-y-4">
         <div className="flex flex-col gap-2">
             <h2 className="text-sm font-semibold text-slate-400 ml-1 flex items-center gap-2 uppercase tracking-wider">
@@ -19,7 +23,7 @@ const SearchForm = ({
                 <input
                     type="text"
                     value={url}
-                    onChange={(e) => setUrl(e.target.value)}
+                    onInput={(e) => setUrl(e?.currentTarget?.value)}
                     placeholder="magnet:?xt=urn:btih:..."
                     className="w-full bg-slate-900 border border-slate-800 text-slate-50 pl-12 pr-12 md:pr-36 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50 transition-all placeholder:text-slate-600 shadow-2xl text-sm md:text-base"
                 />
@@ -47,7 +51,7 @@ const SearchForm = ({
             <button
                 type="submit"
                 disabled={loading || !url}
-                onClick={onSubmit}
+                // onClick={onSubmit}
                 className="md:hidden w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg"
             >
                 {loading ? <Loader2 size={18} className="animate-spin" /> : "Analyze Link"}

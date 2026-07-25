@@ -1,8 +1,8 @@
 import { ArrowDownCircle, Check, Copy, ExternalLink, Files, HardDrive, Info, Magnet, Users } from "lucide-react";
-import { useState } from "react";
 import type { Torrent } from "../type";
 import { formatBytes, getFileEmoji } from "../utils";
 import StatBadge from "./stat.badge";
+import { useState } from "preact/hooks";
 
 const TorrentDetails = ({ torrent }: { torrent: Torrent }) => {
     const [copied, setCopied] = useState(false);
