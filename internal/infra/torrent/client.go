@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -93,7 +95,7 @@ func (c *Client) getTorrent(url string) (t *torrent.Torrent, isMagnet bool, err 
 		return t, true, err
 	}
 
-	if strings.HasSuffix(url, ".torrent") || strings.Contains(url, "https") {
+	if isValidTorrentURL(url) {
 		f, err := downloadFile(url)
 		if err != nil {
 			return nil, false, err
@@ -149,4 +151,41 @@ func downloadFile(url string) (string, error) {
 	tmpFile.Close()
 	slog.Debug("Torrent file downloaded", "path", tmpFile.Name())
 	return tmpFile.Name(), nil
+}
+
+func isValidTorrentURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+
+	if u.Scheme != "https" {
+		return false
+	}
+
+	host := u.Hostname()
+
+	if host == "" {
+		return false
+	}
+
+	if !isAllowedHost(host) {
+		return false
+	}
+
+	return strings.HasSuffix(u.Path, ".torrent")
+}
+
+func isAllowedHost(host string) bool {
+	ip := net.ParseIP(host)
+
+	if ip == nil {
+		return true
+	}
+
+	if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+		return false
+	}
+
+	return true
 }
