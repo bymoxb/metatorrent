@@ -9,108 +9,100 @@ import (
 	"strings"
 
 	"github.com/anacrolix/torrent"
-	anatorrent "github.com/anacrolix/torrent"
-
+	"github.com/anacrolix/torrent/metainfo"
 	"github.com/bymoxb/metatorrent/internal/domain"
 )
 
 type Client struct {
-	client *anatorrent.Client
+	client *torrent.Client
 }
 
-func New(client *anatorrent.Client) *Client {
+func New(client *torrent.Client) *Client {
 	return &Client{
 		client: client,
 	}
 }
 
 func (c *Client) ExtractMetadata(url string) (*domain.Metadata, error) {
-
 	t, isMagnet, err := c.getTorrent(url)
-
 	if err != nil {
 		return nil, err
 	}
 
 	defer t.Drop()
 
-	slog.Debug("Getting file ", "name", t.Name())
-	// fmt.Printf("stats1: %+v\n", t.Stats())
+	slog.Debug("Awaiting metadata", "name", t.Name())
+
 	<-t.GotInfo()
-	// fmt.Printf("stats2: %+v\n", t.Stats())
-	slog.Debug("Metadata retrieved ", "name", t.Name())
+
+	slog.Debug("Metadata retrieved", "name", t.Name())
 
 	info := t.Info()
-
-	mag := url
+	magnetURL := url
 
 	if !isMagnet {
 		mi := t.Metainfo()
 		if magv2, err := mi.MagnetV2(); err == nil {
-			mag = magv2.String()
+			magnetURL = magv2.String()
 		}
 	}
 
-	response := domain.Metadata{
+	trackers := t.Metainfo().AnnounceList.Clone().DistinctValues()
+
+	metadata := &domain.Metadata{
 		Name:     info.Name,
 		Peers:    t.Stats().TotalPeers,
 		Seeds:    t.Stats().ConnectedSeeders,
-		Trackers: []string{},
-		Files:    []domain.File{},
+		Trackers: trackers,
 		Size:     info.TotalLength(),
-		Magnet:   mag,
+		Magnet:   magnetURL,
+		Files:    c.extractFiles(info),
 	}
 
-	for _, tracker := range t.Metainfo().AnnounceList.Clone().DistinctValues() {
-		response.Trackers = append(response.Trackers, tracker)
-	}
+	return metadata, nil
+}
 
-	if len(info.Files) > 0 {
-		for _, file := range info.Files {
-
-			if strings.HasPrefix(file.DisplayPath(info), ".pad/") {
-				continue
-			}
-
-			response.Files = append(response.Files,
-				domain.File{
-					Path: file.DisplayPath(info),
-					Size: file.Length,
-				},
-			)
-
-		}
-	} else {
-		response.Files = []domain.File{{
+func (c *Client) extractFiles(info *metainfo.Info) []domain.File {
+	if len(info.Files) == 0 {
+		return []domain.File{{
 			Path: info.Name,
 			Size: info.Length,
 		}}
 	}
 
-	return &response, nil
-
+	var files []domain.File
+	for _, file := range info.Files {
+		path := file.DisplayPath(info)
+		if strings.HasPrefix(path, ".pad/") {
+			continue
+		}
+		files = append(files, domain.File{
+			Path: path,
+			Size: file.Length,
+		})
+	}
+	return files
 }
 
-func (s *Client) getTorrent(url string) (*torrent.Torrent, bool, error) {
+func (c *Client) getTorrent(url string) (t *torrent.Torrent, isMagnet bool, err error) {
 	if strings.HasPrefix(url, "magnet:?") {
-		t, err := s.client.AddMagnet(url)
+		t, err = c.client.AddMagnet(url)
 		return t, true, err
-	} else if strings.HasSuffix(url, ".torrent") {
+	}
+
+	if strings.HasSuffix(url, ".torrent") || strings.Contains(url, "https") {
 		f, err := downloadFile(url)
 		if err != nil {
-			return nil, false, fmt.Errorf("Error downloading .torrent file")
+			return nil, false, err
 		}
 
-		defer func() {
-			slog.Debug("Deleting torrent file", "path", f)
-			os.Remove(f)
-			slog.Debug("Deleted torrent file", "path", f)
-		}()
-		t, err := s.client.AddTorrentFromFile(f)
+		defer os.Remove(f)
+
+		t, err = c.client.AddTorrentFromFile(f)
 		return t, false, err
 	}
 
-	return nil, false, fmt.Errorf("Not implement torrent type")
+	return nil, false, fmt.Errorf("unsupported torrent source: %s", url)
 }
 
 func downloadFile(url string) (string, error) {
@@ -121,21 +113,37 @@ func downloadFile(url string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("status code: %d", resp.StatusCode)
+		return "", fmt.Errorf("bad status: %s", resp.Status)
 	}
 
-	tmpFile, err := os.CreateTemp("", "upload-*")
-	if err != nil {
-		return "", err
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/x-bittorrent") {
+		return "", fmt.Errorf("URL is not a torrent file link")
 	}
-	defer tmpFile.Close()
 
-	_, err = io.Copy(tmpFile, resp.Body)
+	tmpFile, err := os.CreateTemp("", "torrent-*")
 	if err != nil {
+		return "", fmt.Errorf("creating temp file: %w", err)
+	}
+
+	const maxTorrentSize = 2 * 1024 * 1024 // 2MB
+
+	limitReader := io.LimitReader(resp.Body, maxTorrentSize+1)
+
+	written, err := io.Copy(tmpFile, limitReader)
+	if err != nil {
+		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		return "", err
+		return "", fmt.Errorf("writing to temp file: %w", err)
 	}
 
+	if written > maxTorrentSize {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("torrent file is too large (exceeds %d bytes)", maxTorrentSize)
+	}
+
+	tmpFile.Close()
 	slog.Debug("Torrent file downloaded", "path", tmpFile.Name())
 	return tmpFile.Name(), nil
 }

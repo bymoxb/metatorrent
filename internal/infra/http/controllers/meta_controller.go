@@ -34,7 +34,7 @@ func (self *MetaController) MetadataHandler(c *gin.Context) {
 	result, err := self.service.ExtractMetadata(request.Url)
 
 	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "invalid process url"})
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 		return
 	}
 
